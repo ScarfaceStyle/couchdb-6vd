@@ -1,4 +1,4 @@
-name: deploy Thughtyqa
+name: deploy HSanco
 
 on:
   push:
