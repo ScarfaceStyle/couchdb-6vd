@@ -1,4 +1,4 @@
-name: deploy pages
+name: deploy ganendr
 
 on:
   push:
