@@ -1,0 +1,78 @@
+name: Parse and Validate a version string or tag
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "A specific version to use"
+        required: false
+        type: string
+    outputs:
+      semVerStr:
+        description: "The full version string."
+        value: ${{ jobs.determine-version.outputs.semVerStr}}
+      semVerNum:
+        description: "The numerical part of the version string"
+        value: ${{ jobs.determine-version.outputs.semVerNum}}
+      revNum:
+        description: "The revision number"
+        value: ${{ jobs.determine-version.outputs.revNum}}
+      versionType:
+        description: "Type of the version. Values are [stable, alpha, beta, rc, unknown]"
+        value: ${{ jobs.determine-version.outputs.type }}
+
+env:
+  JAVA_DIST: 'temurin'
+  JAVA_VERSION: 25
+
+jobs:
+  determine-version:
+    name: 'Determines the version following semver'
+    runs-on: ubuntu-latest
+    outputs:
+      semVerNum: ${{ steps.versions.outputs.semVerNum }}
+      semVerStr: ${{ steps.versions.outputs.semVerStr }}
+      revNum: ${{ steps.versions.outputs.revNum }}
+      type: ${{ steps.versions.outputs.type}}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0
+      - name: Setup Java
+        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5.0.0
+        with:
+          distribution: ${{ env.JAVA_DIST }}
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: 'maven'
+      - id: versions
+        name: Get version information
+        run: |
+          if [[ $GITHUB_REF =~ refs/tags/[0-9]+\.[0-9]+\.[0-9]+.* ]]; then
+            SEM_VER_STR=${GITHUB_REF##*/}
+          elif [[ "${VERSION_STRING}" =~ [0-9]+\.[0-9]+\.[0-9]+.* ]]; then
+            SEM_VER_STR="${VERSION_STRING}"
+          else
+            SEM_VER_STR=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout`
+          fi
+          SEM_VER_NUM=`echo ${SEM_VER_STR} | sed -E 's/([0-9]+\.[0-9]+\.[0-9]+).*/\1/'`
+          REVCOUNT=`git rev-list --count HEAD`
+          TYPE="unknown"
+          if [[ $SEM_VER_STR =~ [0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            TYPE="stable"
+          elif [[ $SEM_VER_STR =~ [0-9]+\.[0-9]+\.[0-9]+-alpha[1-9]+$ ]]; then
+            TYPE="alpha"
+          elif [[ $SEM_VER_STR =~ [0-9]+\.[0-9]+\.[0-9]+-beta[1-9]+$ ]]; then
+            TYPE="beta"
+          elif [[ $SEM_VER_STR =~ [0-9]+\.[0-9]+\.[0-9]+-rc[1-9]$ ]]; then
+            TYPE="rc"
+          fi
+          echo "semVerStr=${SEM_VER_STR}" >> $GITHUB_OUTPUT
+          echo "semVerNum=${SEM_VER_NUM}" >> $GITHUB_OUTPUT
+          echo "revNum=${REVCOUNT}" >> $GITHUB_OUTPUT
+          echo "type=${TYPE}" >> $GITHUB_OUTPUT
+        env:
+          VERSION_STRING: ${{ inputs.version }}
+      - name: Validate Version
+        uses: skymatic/semver-validation-action@7a6ae1c9e121540d11c9c7e4e667c83d583aa153 # v3.0.0
+        with:
+          version: ${{ steps.versions.outputs.semVerStr }}

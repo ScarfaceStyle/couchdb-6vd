@@ -1,0 +1,548 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>org.cryptomator</groupId>
+	<artifactId>cryptomator</artifactId>
+	<version>1.19.0-SNAPSHOT</version>
+	<name>Cryptomator Desktop App</name>
+
+	<organization>
+		<name>cryptomator.org</name>
+		<url>https://cryptomator.org</url>
+	</organization>
+
+	<developers>
+		<developer>
+			<name>Sebastian Stenzel</name>
+			<email>sebastian.stenzel@gmail.com</email>
+			<timezone>+1</timezone>
+		</developer>
+		<developer>
+			<name>Armin Schrenk</name>
+			<email>armin.schrenk+dev@mailbox.org</email>
+			<timezone>+1</timezone>
+		</developer>
+	</developers>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.jdk.version>25</project.jdk.version>
+
+		<!-- Group IDs of jars that need to stay on the class path for now -->
+		<!-- remove them, as soon they got modularized or support is dropped (i.e., WebDAV) -->
+		<nonModularGroupIds>org.ow2.asm,org.apache.jackrabbit,org.apache.httpcomponents</nonModularGroupIds>
+
+		<!-- cryptomator dependencies -->
+		<cryptomator.cryptofs.version>2.9.0</cryptomator.cryptofs.version>
+		<cryptomator.integrations.version>1.7.0</cryptomator.integrations.version>
+		<cryptomator.integrations.win.version>1.5.1</cryptomator.integrations.win.version>
+		<cryptomator.integrations.mac.version>1.4.1</cryptomator.integrations.mac.version>
+		<cryptomator.integrations.linux.version>1.6.1</cryptomator.integrations.linux.version>
+		<cryptomator.fuse.version>5.1.0</cryptomator.fuse.version>
+		<cryptomator.webdav.version>3.0.0</cryptomator.webdav.version>
+
+		<!-- 3rd party dependencies -->
+		<commons-lang3.version>3.19.0</commons-lang3.version>
+		<dagger.version>2.57.2</dagger.version>
+		<easybind.version>2.2</easybind.version>
+		<jackson.version>2.20.0</jackson.version>
+		<javafx.version>25</javafx.version>
+		<jwt.version>4.5.0</jwt.version>
+		<nimbus-jose.version>10.5</nimbus-jose.version>
+		<logback.version>1.5.19</logback.version>
+		<slf4j.version>2.0.17</slf4j.version>
+		<tinyoauth2.version>0.8.1</tinyoauth2.version>
+		<zxcvbn.version>1.9.0</zxcvbn.version>
+
+		<!-- test dependencies -->
+		<junit.jupiter.version>5.13.4</junit.jupiter.version>
+		<mockito.version>5.20.0</mockito.version>
+		<hamcrest.version>3.0</hamcrest.version>
+
+		<!-- build-time dependencies -->
+		<jetbrains.annotations.version>26.0.2-1</jetbrains.annotations.version>
+		<dependency-check.version>12.1.5</dependency-check.version>
+		<jacoco.version>0.8.14</jacoco.version>
+		<license-generator.version>2.7.0</license-generator.version>
+		<junit-tree-reporter.version>1.4.0</junit-tree-reporter.version>
+		<mvn-compiler.version>3.14.1</mvn-compiler.version>
+		<mvn-resources.version>3.3.1</mvn-resources.version>
+		<mvn-dependency.version>3.8.1</mvn-dependency.version>
+		<mvn-surefire.version>3.5.4</mvn-surefire.version>
+		<mvn-jar.version>3.4.2</mvn-jar.version>
+
+		<!-- Property used by surefire to determine jacoco engine -->
+		<surefire.jacoco.args></surefire.jacoco.args>
+	</properties>
+
+	<dependencies>
+		<!-- Cryptomator Libs -->
+		<dependency>
+			<groupId>org.cryptomator</groupId>
+			<artifactId>cryptolib</artifactId>
+			<version>2.2.1</version>
+		</dependency>
+		<dependency>
+			<groupId>org.cryptomator</groupId>
+			<artifactId>cryptofs</artifactId>
+			<version>${cryptomator.cryptofs.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.cryptomator</groupId>
+			<artifactId>fuse-nio-adapter</artifactId>
+			<version>${cryptomator.fuse.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.cryptomator</groupId>
+			<artifactId>webdav-nio-adapter</artifactId>
+			<version>${cryptomator.webdav.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.cryptomator</groupId>
+			<artifactId>integrations-api</artifactId>
+			<version>${cryptomator.integrations.version}</version>
+		</dependency>
+
+		<!-- JavaFX -->
+		<dependency>
+			<groupId>org.openjfx</groupId>
+			<artifactId>javafx-base</artifactId>
+			<version>${javafx.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.openjfx</groupId>
+			<artifactId>javafx-graphics</artifactId>
+			<version>${javafx.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.openjfx</groupId>
+			<artifactId>javafx-controls</artifactId>
+			<version>${javafx.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.openjfx</groupId>
+			<artifactId>javafx-fxml</artifactId>
+			<version>${javafx.version}</version>
+		</dependency>
+
+		<!-- Logging -->
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+			<version>${slf4j.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>ch.qos.logback</groupId>
+			<artifactId>logback-core</artifactId>
+			<version>${logback.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>ch.qos.logback</groupId>
+			<artifactId>logback-classic</artifactId>
+			<version>${logback.version}</version>
+		</dependency>
+
+		<!-- Apache Commons -->
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+			<version>${commons-lang3.version}</version>
+		</dependency>
+
+		<!-- OAuth/JWT -->
+		<dependency>
+			<groupId>io.github.coffeelibs</groupId>
+			<artifactId>tiny-oauth2-client</artifactId>
+			<version>${tinyoauth2.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.auth0</groupId>
+			<artifactId>java-jwt</artifactId>
+			<version>${jwt.version}</version>
+			<exclusions>
+				<exclusion>
+					<groupId>com.fasterxml.jackson.core</groupId>
+					<artifactId>jackson-core</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>com.nimbusds</groupId>
+			<artifactId>nimbus-jose-jwt</artifactId>
+			<version>${nimbus-jose.version}</version>
+		</dependency>
+
+		<!-- Jackson -->
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+			<version>${jackson.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.fasterxml.jackson.datatype</groupId>
+			<artifactId>jackson-datatype-jsr310</artifactId>
+			<version>${jackson.version}</version>
+		</dependency>
+
+		<!-- EasyBind -->
+		<dependency>
+			<groupId>com.tobiasdiez</groupId>
+			<artifactId>easybind</artifactId>
+			<version>${easybind.version}</version>
+		</dependency>
+
+		<!-- Zxcvbn -->
+		<dependency>
+			<groupId>com.nulab-inc</groupId>
+			<artifactId>zxcvbn</artifactId>
+			<version>${zxcvbn.version}</version>
+		</dependency>
+
+		<!-- Google -->
+		<dependency>
+			<groupId>com.google.dagger</groupId>
+			<artifactId>dagger</artifactId>
+			<version>${dagger.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>jakarta.inject</groupId>
+			<artifactId>jakarta.inject-api</artifactId>
+			<version>2.0.1</version>
+		</dependency>
+
+		<!-- Caffeine -->
+		<dependency>
+			<groupId>com.github.ben-manes.caffeine</groupId>
+			<artifactId>caffeine</artifactId>
+			<version>3.2.2</version>
+		</dependency>
+		<!-- JUnit / Mockito / Hamcrest -->
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<version>${junit.jupiter.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.mockito</groupId>
+			<artifactId>mockito-core</artifactId>
+			<version>${mockito.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.hamcrest</groupId>
+			<artifactId>hamcrest</artifactId>
+			<version>${hamcrest.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.openjfx</groupId>
+			<artifactId>javafx-swing</artifactId>
+			<version>${javafx.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.google.jimfs</groupId>
+			<artifactId>jimfs</artifactId>
+			<version>1.3.1</version>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.jetbrains</groupId>
+			<artifactId>annotations</artifactId>
+			<version>${jetbrains.annotations.version}</version>
+			<scope>provided</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<pluginManagement>
+			<plugins>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-compiler-plugin</artifactId>
+					<version>${mvn-compiler.version}</version>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-resources-plugin</artifactId>
+					<version>${mvn-resources.version}</version>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-dependency-plugin</artifactId>
+					<version>${mvn-dependency.version}</version>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-surefire-plugin</artifactId>
+					<version>${mvn-surefire.version}</version>
+				</plugin>
+				<plugin>
+					<groupId>org.codehaus.mojo</groupId>
+					<artifactId>license-maven-plugin</artifactId>
+					<version>${license-generator.version}</version>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-jar-plugin</artifactId>
+					<version>${mvn-jar.version}</version>
+				</plugin>
+				<plugin>
+					<groupId>org.jacoco</groupId>
+					<artifactId>jacoco-maven-plugin</artifactId>
+					<version>${jacoco.version}</version>
+				</plugin>
+				<plugin>
+					<groupId>org.owasp</groupId>
+					<artifactId>dependency-check-maven</artifactId>
+					<version>${dependency-check.version}</version>
+				</plugin>
+			</plugins>
+		</pluginManagement>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<release>${project.jdk.version}</release>
+					<annotationProcessorPaths>
+						<path>
+							<groupId>com.google.dagger</groupId>
+							<artifactId>dagger-compiler</artifactId>
+							<version>${dagger.version}</version>
+						</path>
+					</annotationProcessorPaths>
+					<compilerArgs>
+						<arg>-Adagger.fastInit=enabled</arg>
+						<arg>-Adagger.formatGeneratedSource=enabled</arg>
+					</compilerArgs>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<configuration>
+					<archive>
+						<manifest>
+							<!-- adds Implementation-Version which can be read during runtime -->
+							<addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+						</manifest>
+					</archive>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<dependencies>
+					<dependency>
+						<groupId>me.fabriciorby</groupId>
+						<artifactId>maven-surefire-junit5-tree-reporter</artifactId>
+						<version>${junit-tree-reporter.version}</version>
+					</dependency>
+				</dependencies>
+				<configuration>
+					<reportFormat>plain</reportFormat>
+					<consoleOutputReporter>
+						<disable>true</disable>
+					</consoleOutputReporter>
+					<argLine>@{surefire.jacoco.args} -javaagent:${org.mockito:mockito-core:jar} --enable-native-access=javafx.graphics</argLine>
+					<statelessTestsetInfoReporter
+							implementation="org.apache.maven.plugin.surefire.extensions.junit5.JUnit5StatelessTestsetInfoTreeReporter">
+					</statelessTestsetInfoReporter>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>jar-paths-to-properties</id>
+						<phase>validate</phase>
+						<goals>
+							<goal>properties</goal>
+						</goals>
+					</execution>
+					<!-- sort jars into two buckets (classpath and modulepath). exclude openjfx, which gets jlinked separately -->
+					<execution>
+						<id>copy-mods</id>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>copy-dependencies</goal>
+						</goals>
+						<configuration>
+							<includeScope>runtime</includeScope>
+							<outputDirectory>${project.build.directory}/mods</outputDirectory>
+							<excludeGroupIds>org.openjfx,${nonModularGroupIds}</excludeGroupIds>
+						</configuration>
+					</execution>
+					<execution>
+						<id>copy-libs</id>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>copy-dependencies</goal>
+						</goals>
+						<configuration>
+							<includeScope>runtime</includeScope>
+							<outputDirectory>${project.build.directory}/libs</outputDirectory>
+							<includeGroupIds>${nonModularGroupIds}</includeGroupIds>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>license-maven-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>add-third-party</id>
+						<goals>
+							<goal>add-third-party</goal>
+						</goals>
+						<phase>generate-resources</phase>
+						<configuration>
+							<thirdPartyFilename>THIRD-PARTY.txt</thirdPartyFilename>
+							<includedScopes>compile</includedScopes>
+							<excludedGroups>org\.cryptomator</excludedGroups>
+							<licenseMergesUrl>file:///${project.basedir}/license/merges</licenseMergesUrl>
+							<fileTemplate>${project.basedir}/src/main/resources/license/template.ftl</fileTemplate>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+		<resources>
+			<resource>
+				<directory>src/main/resources</directory>
+				<excludes>
+					<exclude>license/*</exclude>
+				</excludes>
+			</resource>
+		</resources>
+	</build>
+
+	<profiles>
+		<profile>
+			<id>coverage</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.jacoco</groupId>
+						<artifactId>jacoco-maven-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>prepare-agent</id>
+								<goals>
+									<goal>prepare-agent</goal>
+								</goals>
+								<configuration>
+									<propertyName>surefire.jacoco.args</propertyName>
+								</configuration>
+							</execution>
+							<execution>
+								<id>report</id>
+								<goals>
+									<goal>report</goal>
+								</goals>
+							</execution>
+						</executions>
+						<configuration>
+							<excludes>
+								<exclude>**/*_*</exclude>
+								<exclude>**/Dagger*</exclude>
+							</excludes>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+
+		<profile>
+			<id>dependency-check</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.owasp</groupId>
+						<artifactId>dependency-check-maven</artifactId>
+						<configuration>
+							<nvdValidForHours>24</nvdValidForHours>
+							<failBuildOnCVSS>0</failBuildOnCVSS>
+							<skipTestScope>true</skipTestScope>
+							<detail>true</detail>
+							<suppressionFile>suppression.xml</suppressionFile>
+							<nvdApiKeyEnvironmentVariable>NVD_API_KEY</nvdApiKeyEnvironmentVariable>
+						</configuration>
+						<executions>
+							<execution>
+								<goals>
+									<goal>check</goal>
+								</goals>
+								<phase>validate</phase>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+
+		<profile>
+			<id>mac</id>
+			<activation>
+				<os>
+					<family>mac</family>
+				</os>
+				<property>
+					<name>idea.version</name>
+				</property>
+			</activation>
+			<dependencies>
+				<dependency>
+					<groupId>org.cryptomator</groupId>
+					<artifactId>integrations-mac</artifactId>
+					<version>${cryptomator.integrations.mac.version}</version>
+				</dependency>
+			</dependencies>
+		</profile>
+
+		<profile>
+			<id>linux</id>
+			<activation>
+				<os>
+					<family>unix</family>
+					<name>Linux</name>
+				</os>
+				<property>
+					<name>idea.version</name>
+				</property>
+			</activation>
+			<dependencies>
+				<dependency>
+					<groupId>org.cryptomator</groupId>
+					<artifactId>integrations-linux</artifactId>
+					<version>${cryptomator.integrations.linux.version}</version>
+				</dependency>
+			</dependencies>
+		</profile>
+
+		<profile>
+			<id>win</id>
+			<activation>
+				<os>
+					<family>windows</family>
+				</os>
+				<property>
+					<name>idea.version</name>
+				</property>
+			</activation>
+			<dependencies>
+				<dependency>
+					<groupId>org.cryptomator</groupId>
+					<artifactId>integrations-win</artifactId>
+					<version>${cryptomator.integrations.win.version}</version>
+				</dependency>
+			</dependencies>
+		</profile>
+	</profiles>
+
+</project>

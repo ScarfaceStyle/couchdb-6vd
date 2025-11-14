@@ -1,0 +1,260 @@
+name: Build AppImage
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version'
+        required: false
+  push:
+    branches-ignore:
+      - 'dependabot/**'
+    paths:
+      - '.github/workflows/appimage.yml'
+      - 'dist/linux/appimage/**'
+      - 'dist/linux/common/**'
+      - 'dist/linux/resources/**'
+
+env:
+  JAVA_DIST: 'temurin'
+  JAVA_VERSION: '25.0.1+8.0.LTS'
+
+jobs:
+  get-version:
+    uses: ./.github/workflows/get-version.yml
+    with:
+      version: ${{ inputs.version }} #okay if not defined
+
+  build:
+    name: Build AppImage
+    runs-on: ${{ matrix.os }}
+    needs: [get-version]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            appimage-suffix: x86_64
+            openjfx-url: 'https://download2.gluonhq.com/openjfx/25/openjfx-25_linux-x64_bin-jmods.zip'
+            openjfx-sha: '96e520f48610d8ffb94ca30face1f11ffe8a977ddc1c4ff80b1a9e9f048bd94e'
+          - os: ubuntu-24.04-arm
+            appimage-suffix: aarch64
+            openjfx-url: 'https://download2.gluonhq.com/openjfx/25/openjfx-25_linux-aarch64_bin-jmods.zip'
+            openjfx-sha: '9ad4ca7b769ca4ee6419f1e99143dd6ff812f8be4fddb46a7d7cacbeea148af4'
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Setup Java
+        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5.0.0
+        with:
+          distribution: ${{ env.JAVA_DIST }}
+          java-version: ${{ env.JAVA_VERSION }}
+          check-latest: true
+          cache: 'maven'
+      - name: Download OpenJFX jmods
+        id: download-jmods
+        run: |
+          curl -L ${{ matrix.openjfx-url }} -o openjfx-jmods.zip
+          echo "${{ matrix.openjfx-sha }}  openjfx-jmods.zip" | shasum -a256 --check
+          mkdir -p openjfx-jmods
+          unzip -j openjfx-jmods.zip \*/javafx.base.jmod \*/javafx.controls.jmod \*/javafx.fxml.jmod \*/javafx.graphics.jmod -d openjfx-jmods
+      - name: Ensure major jfx version in pom and in jmods is the same
+        run: |
+          JMOD_VERSION=$(jmod describe openjfx-jmods/javafx.base.jmod | head -1)
+          JMOD_VERSION=${JMOD_VERSION#*@}
+          JMOD_VERSION=${JMOD_VERSION%%.*}
+          POM_JFX_VERSION=$(mvn help:evaluate "-Dexpression=javafx.version" -q -DforceStdout)
+          POM_JFX_VERSION=${POM_JFX_VERSION#*@}
+          POM_JFX_VERSION=${POM_JFX_VERSION%%.*}
+
+          if [ $POM_JFX_VERSION -ne $JMOD_VERSION ]; then
+            >&2 echo "Major JavaFX version in pom.xml (${POM_JFX_VERSION}) != amd64 jmod version (${JMOD_VERSION})"
+            exit 1
+          fi
+      - name: Set version
+        run : mvn versions:set -DnewVersion=${{ needs.get-version.outputs.semVerStr }}
+      - name: Run maven
+        run: mvn -B clean package -Plinux -DskipTests
+      - name: Patch target dir
+        run: |
+          cp LICENSE.txt target
+          cp target/cryptomator-*.jar target/mods
+      - name: Run jlink with help option
+        id: jep-493-check
+        run: |
+          JMOD_PATHS="openjfx-jmods"
+          if ! ${JAVA_HOME}/bin/jlink --help | grep -q "Linking from run-time image enabled"; then
+            JMOD_PATHS="${JAVA_HOME}/jmods:${JMOD_PATHS}"
+          fi
+          echo "jmod_paths=${JMOD_PATHS}" >> "$GITHUB_OUTPUT"
+      - name: Run jlink
+        #Remark: no compression is applied for improved build compression later (here appimage)
+        run: >
+          ${JAVA_HOME}/bin/jlink
+          --verbose
+          --output runtime
+          --module-path "${{ steps.jep-493-check.outputs.jmod_paths }}"
+          --add-modules java.base,java.desktop,java.instrument,java.logging,java.naming,java.net.http,java.scripting,java.sql,java.xml,javafx.base,javafx.graphics,javafx.controls,javafx.fxml,jdk.crypto.cryptoki,jdk.crypto.ec,jdk.unsupported,jdk.security.auth,jdk.accessibility,jdk.management.jfr,jdk.net,java.compiler
+          --strip-native-commands
+          --no-header-files
+          --no-man-pages
+          --strip-debug
+          --compress zip-0
+      - name: Run jpackage
+        run: >
+          ${JAVA_HOME}/bin/jpackage
+          --verbose
+          --type app-image
+          --runtime-image runtime
+          --input target/libs
+          --module-path target/mods
+          --module org.cryptomator.desktop/org.cryptomator.launcher.Cryptomator
+          --dest appdir
+          --name Cryptomator
+          --vendor "Skymatic GmbH"
+          --copyright "(C) 2016 - 2025 Skymatic GmbH"
+          --app-version "${{  needs.get-version.outputs.semVerNum }}.${{  needs.get-version.outputs.revNum }}"
+          --java-options "--enable-preview"
+          --java-options "--enable-native-access=javafx.graphics,org.cryptomator.jfuse.linux.amd64,org.cryptomator.jfuse.linux.aarch64,org.purejava.appindicator"
+          --java-options "-Xss5m"
+          --java-options "-Xmx256m"
+          --java-options "-Dcryptomator.appVersion=\"${{  needs.get-version.outputs.semVerStr }}\""
+          --java-options "-Dfile.encoding=\"utf-8\""
+          --java-options "-Djava.net.useSystemProxies=true"
+          --java-options "-Dcryptomator.logDir=\"@{userhome}/.local/share/Cryptomator/logs\""
+          --java-options "-Dcryptomator.pluginDir=\"@{userhome}/.local/share/Cryptomator/plugins\""
+          --java-options "-Dcryptomator.settingsPath=\"@{userhome}/.config/Cryptomator/settings.json:@{userhome}/.Cryptomator/settings.json\""
+          --java-options "-Dcryptomator.p12Path=\"@{userhome}/.config/Cryptomator/key.p12\""
+          --java-options "-Dcryptomator.ipcSocketPath=\"@{userhome}/.config/Cryptomator/ipc.socket\""
+          --java-options "-Dcryptomator.mountPointsDir=\"@{userhome}/.local/share/Cryptomator/mnt\""
+          --java-options "-Dcryptomator.showTrayIcon=true"
+          --java-options "-Dcryptomator.integrationsLinux.trayIconsDir=\"@{appdir}/usr/share/icons/hicolor/symbolic/apps\""
+          --java-options "-Dcryptomator.buildNumber=\"appimage-${{  needs.get-version.outputs.revNum }}\""
+          --java-options "-Dcryptomator.networking.truststore.p12Path=\"/etc/cryptomator/certs.p12\""
+          --java-options "-XX:ErrorFile=/cryptomator/cryptomator_crash.log"
+          --resource-dir dist/linux/resources
+      - name: Patch Cryptomator.AppDir
+        run: |
+          mv appdir/Cryptomator Cryptomator.AppDir
+          cp -r dist/linux/appimage/resources/AppDir/* Cryptomator.AppDir/
+          cp dist/linux/common/org.cryptomator.Cryptomator256.png Cryptomator.AppDir/usr/share/icons/hicolor/256x256/apps/org.cryptomator.Cryptomator.png
+          cp dist/linux/common/org.cryptomator.Cryptomator512.png Cryptomator.AppDir/usr/share/icons/hicolor/512x512/apps/org.cryptomator.Cryptomator.png
+          cp dist/linux/common/org.cryptomator.Cryptomator.svg Cryptomator.AppDir/usr/share/icons/hicolor/scalable/apps/org.cryptomator.Cryptomator.svg
+          cp dist/linux/common/org.cryptomator.Cryptomator.tray.svg Cryptomator.AppDir/usr/share/icons/hicolor/scalable/apps/org.cryptomator.Cryptomator.tray.svg
+          cp dist/linux/common/org.cryptomator.Cryptomator.tray-unlocked.svg Cryptomator.AppDir/usr/share/icons/hicolor/scalable/apps/org.cryptomator.Cryptomator.tray-unlocked.svg
+          cp dist/linux/common/org.cryptomator.Cryptomator.tray.svg Cryptomator.AppDir/usr/share/icons/hicolor/symbolic/apps/org.cryptomator.Cryptomator.tray-symbolic.svg
+          cp dist/linux/common/org.cryptomator.Cryptomator.tray-unlocked.svg Cryptomator.AppDir/usr/share/icons/hicolor/symbolic/apps/org.cryptomator.Cryptomator.tray-unlocked-symbolic.svg
+          cp dist/linux/common/org.cryptomator.Cryptomator.metainfo.xml Cryptomator.AppDir/usr/share/metainfo/org.cryptomator.Cryptomator.metainfo.xml
+          cp dist/linux/common/org.cryptomator.Cryptomator.desktop Cryptomator.AppDir/usr/share/applications/org.cryptomator.Cryptomator.desktop
+          cp dist/linux/common/application-vnd.cryptomator.vault.xml Cryptomator.AppDir/usr/share/mime/packages/application-vnd.cryptomator.vault.xml
+          ln -s usr/share/icons/hicolor/scalable/apps/org.cryptomator.Cryptomator.svg Cryptomator.AppDir/org.cryptomator.Cryptomator.svg
+          ln -s usr/share/icons/hicolor/scalable/apps/org.cryptomator.Cryptomator.svg Cryptomator.AppDir/.DirIcon
+          ln -s usr/share/applications/org.cryptomator.Cryptomator.desktop Cryptomator.AppDir/org.cryptomator.Cryptomator.desktop
+          ln -s org.cryptomator.Cryptomator.metainfo.xml Cryptomator.AppDir/usr/share/metainfo/org.cryptomator.Cryptomator.appdata.xml
+          ln -s bin/cryptomator.sh Cryptomator.AppDir/AppRun
+      - name: Download AppImageKit
+        run: |
+          curl -L https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-${{ matrix.appimage-suffix }}.AppImage -o appimagetool.AppImage
+          chmod +x appimagetool.AppImage
+          ./appimagetool.AppImage --appimage-extract
+      - name: Prepare GPG-Agent for signing with key 615D449FE6E6A235
+        run: |
+          echo "${GPG_PRIVATE_KEY}" | gpg --batch --quiet --import
+          echo "${GPG_PASSPHRASE}" | gpg --batch --quiet --passphrase-fd 0 --pinentry-mode loopback -u 615D449FE6E6A235 --dry-run --sign README.md
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.RELEASES_GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.RELEASES_GPG_PASSPHRASE }}
+      - name: Build AppImage
+        run: >
+          ./squashfs-root/AppRun Cryptomator.AppDir cryptomator-${{  needs.get-version.outputs.semVerStr }}-${{ matrix.appimage-suffix }}.AppImage
+          -u "gh-releases-zsync|cryptomator|cryptomator|latest|cryptomator-*-${{ matrix.appimage-suffix }}.AppImage.zsync"
+          --sign --sign-key=615D449FE6E6A235
+      - name: Create detached GPG signatures
+        run: |
+          gpg --batch --quiet --passphrase-fd 0 --pinentry-mode loopback -u 615D449FE6E6A235 --detach-sign -a cryptomator-*.AppImage
+          gpg --batch --quiet --passphrase-fd 0 --pinentry-mode loopback -u 615D449FE6E6A235 --detach-sign -a cryptomator-*.AppImage.zsync
+      - name: Upload artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: appimage-${{ matrix.appimage-suffix }}
+          path: |
+            cryptomator-*.AppImage
+            cryptomator-*.AppImage.zsync
+            cryptomator-*.asc
+          if-no-files-found: error
+      - name: Publish AppImage on GitHub Releases
+        if: startsWith(github.ref, 'refs/tags/') && github.event.action == 'published'
+        uses: softprops/action-gh-release@6da8fa9354ddfdc4aeace5fc48d7f679b5214090 # v2.4.1
+        with:
+          fail_on_unmatched_files: true
+          token: ${{ secrets.CRYPTOBOT_RELEASE_TOKEN }}
+          files: |
+            cryptomator-*.AppImage
+            cryptomator-*.zsync
+            cryptomator-*.asc
+
+  create-aur-bin-pr:
+    name: Create PR for aur-bin repo
+    needs: [build, get-version]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' && needs.get-version.outputs.versionType == 'stable'
+    steps:
+      - name: Download AppImages
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          path: downloads/
+          merge-multiple: true
+      - name: Compute sha256 hash of AppImages
+        id: checksums
+        run: |
+          X64_SHA256=$(sha256sum downloads/cryptomator-*-x86_64.AppImage | cut -d ' ' -f1)
+          echo "x64-sha256sum=${X64_SHA256}" >> "$GITHUB_OUTPUT"
+          AARCH64_SHA256=$(sha256sum downloads/cryptomator-*-aarch64.AppImage | cut -d ' ' -f1)
+          echo "aarch64-sha256sum=${AARCH64_SHA256}" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          repository: 'cryptomator/aur-bin'
+          token: ${{ secrets.CRYPTOBOT_PR_TOKEN }}
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install makepkg pacman-package-manager
+      - name: Checkout release branch
+        run: |
+          git checkout -b release/${{ needs.get-version.outputs.semVerStr }}
+      - name: Update build file
+        run: |
+          sed -i -e 's|^pkgver=.*$|pkgver=${{ needs.get-version.outputs.semVerStr }}|' PKGBUILD
+          sed -i -e 's|^pkgrel=.*$|pkgrel=1|' PKGBUILD
+          sed -i -e "s|^sha256sums_x86_64=.*$|sha256sums_x86_64=('${{ steps.checksums.outputs.x64-sha256sum }}'|" PKGBUILD
+          sed -i -e "s|^sha256sums_aarch64=.*$|sha256sums_aarch64=('${{ steps.checksums.outputs.aarch64-sha256sum}}'|" PKGBUILD
+          makepkg --printsrcinfo > .SRCINFO
+      - name: Commit and push
+        run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+          git config push.autoSetupRemote true
+          git stage .
+          git commit -m "Prepare release ${{needs.get-version.outputs.semVerStr}}"
+          git push
+      - name: Create pull request
+        id: create-pr
+        run: |
+          printf "> [!IMPORTANT]\n> Todos:\n> - [ ] Update build instructions\n> - [ ] Check for JDK update\n> - [ ] Check for JFX update" > pr_body.md
+          URL=$(gh pr create --title "Release ${{ needs.get-version.outputs.semVerStr }}" --body-file pr_body.md)
+          echo "PR_URL=$URL" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ secrets.CRYPTOBOT_PR_TOKEN }}
+      - name: Slack Notification
+        uses: rtCamp/action-slack-notify@e31e87e03dd19038e411e38ae27cbad084a90661 # v2.3.3
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_USERNAME: 'Cryptobot'
+          SLACK_ICON: false
+          SLACK_ICON_EMOJI: ':bot:'
+          SLACK_CHANNEL: 'cryptomator-desktop'
+          SLACK_TITLE: "AUR-bin release PR for ${{ github.event.repository.name }} ${{ github.event.release.tag_name }} created."
+          SLACK_MESSAGE: "See <${{ steps.create-pr.outputs.PR_URL }}|PR> on how to proceed."
+          SLACK_FOOTER: false
+          MSG_MINIMAL: true
